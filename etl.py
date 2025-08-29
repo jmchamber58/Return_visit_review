@@ -1,4 +1,16 @@
 def fill_survey(dataframe):
+    """
+    takes data from dataframe and uses it to fill the REDCap survey
+
+    Arguments:
+        dataframe
+
+    Returns:
+        survey
+
+
+    """
+    
     from redcap_api import Project
     import json
     import pandas as pd

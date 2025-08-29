@@ -1,10 +1,13 @@
 from get_data import query_data
-df_fellows, df_residents, df_app, date_range = query_data()
-from etl import fill_survey_resident, fill_survey_supervisor,fill_survey_fellow, fill_survey_app
+df = query_data()
+# need to write etl for MD and APP
+from etl import fill_survey_md, fill_survey_app
 import pandas as pd
 from redcap_api import Project
 pd.set_option('max_colwidth', 100000)
 #queried_data = query_data()
+
+
 df_list = [df_fellows, df_residents, df_app]
 df_residents.to_excel(f"resident_output_{date_range}.xlsx",verbose=True) #outputs raw query data
 df_app.to_excel(f"app_output_{date_range}.xlsx",verbose=True)
