@@ -1,7 +1,16 @@
 #Import Dependencies
 
 def query_data():
+    """
+    pulls data for returns within 7 days
 
+    Arguments:
+        None
+    
+    Returns:
+        survey data to go to REDCap
+    
+    """
     import urllib
     from pandas.core.algorithms import unique
     from sql_server_conn import sql_server_alchemy_conn
@@ -30,6 +39,7 @@ def query_data():
         SELECT distinct tat.LAST_ASSIGNED_MD, tat.LAST_ASSIGNED_MD_ID
         , tat.FIRST_MD_SEEN, tat.FIRST_MD_SEEN_ID
 		, tat.FIRST_RESIDENT_SEEN, tat.FIRST_RESIDENT_SEEN_ID
+        , concat(tat.FIRST_RESIDENT_SEEN, ';', tat.FIRST_MD_SEEN,';',tat.LAST_ASSIGNED_MD) index_providers
         , left(tat.PT_ACUITY,1) as ESI 
         , tat.PATIENT_FIN index_fin, tat.REASON_FOR_VISIT index_rfv, tat2.REASON_FOR_VISIT retunr_rfv
         , tat2.PATIENT_FIN return_fin
@@ -39,7 +49,9 @@ def query_data():
             when tat2.PT_DISCH_DISPO like '%IP' then 1
             else 0
             end admit_visit2
-        , prov.ProviderRole as role
+        , prov.ProviderRole as role_last_md
+        , prov2.ProviderRole as role_first_md
+        , prov3.ProviderRole as role_first_resident
         , '' return_reasons
 		, '' other_specify
 		, prov.email as last_assigned_MD_email
@@ -65,32 +77,16 @@ def query_data():
         --ORDER BY tat.LAST_ASSIGNED_MD, PATIENT_FIN, Bounceback_Hours
 
     """
+    return_visits = pd.read_sql(sql, conn)
+    return_visits.drop_duplicates(subset='PATIENT_FIN', keep='first', inplace=True)
+
+    return return_visits 
 
 
-    returns = pd.read_sql(sql, conn)
-    returns.drop_duplicates(subset='PATIENT_FIN', keep='first', inplace=True)
-        
-        ; with first_MD as
-            (
-            select patient_fin as pt_fin, FIRST_MD_SEEN, FIRST_MD_SEEN_ID, ProviderRole as Prov1Role, email as Prov1email
-            from COVID_TAT tat
-            inner join Providers_All_Years prov on FIRST_MD_SEEN_ID = prov.Provider_ID
-            where format(CHECKIN_DATE_TIME,'MM/dd/yyyy') between @start and @end
-            )
+"""
 
-        , last_MD as
-            (
-            select patient_fin as pt_fin, LAST_ASSIGNED_MD, LAST_ASSIGNED_MD_ID, ProviderRole as Prov3Role, email as Prov3email
-            from COVID_TAT tat
-            inner join Providers_All_Years prov on LAST_ASSIGNED_MD_ID = prov.Provider_ID
-            where format(CHECKIN_DATE_TIME,'MM/dd/yyyy') = @start
-            )
 
-        select distinct * from first_MD
-        inner join first_res on first_MD.pt_fin = first_res.pt_fin
-        inner join last_MD on first_MD.pt_fin = last_MD.pt_fin
-    """
-    df = pd.read_sql(sql,conn)
+
 
     # close all SQL connections
     for i in range(1, 200):
@@ -168,3 +164,5 @@ def query_data():
         'last_name',  'Prov2Role', 'Prov2email', 'count']]
     df_app = df_app.rename(columns = {'FIRST_RESIDENT_SEEN':'FIRST_APP'})
     return df_fellows, df_residents, df_app, date_range
+
+    """

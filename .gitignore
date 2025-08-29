@@ -1,0 +1,76 @@
+*.class
+*.log
+*.idea
+*.iml
+.DS_Store
+**/target/
+conf/local
+lib/
+**/META-INF
+*.json
+
+*.csv
+*.txt
+.vs
+
+*pw*
+
+*.pyc
+
+null/
+
+.bloop
+.metals
+# Visual Studio Code settings
+.vscode
+
+# PowerShell data files
+*.psd1
+# allow Examples
+!*.Example.psd1
+
+# docker-related
+.env
+!.env.sample
+initdb.sql
+!initdb.sample.sql
+docker-compose.yaml
+!.docker-compose.yaml
+
+# for sbt 1.5.7
+.bsp
+
+# R files
+.Rhistory
+.Rapp.history
+.RData
+*-Ex.R
+/*.tar.gz
+/*.Rcheck/
+.Rproj.user/
+.httr-oauth
+/*_cache
+/cache/
+*.utf8.md
+*.knit.md
+.Rproj.user
+*.DS_Store
+*.log
+*.rds
+*.html
+*.xml
+*.swp
+output/
+*.pdf
+/doc
+out*
+*.jar
+*.sbt
+series.xlsx
+~$series.xlsx
+.venv/
+.env*
+*.xlsx
+*cache
+__pycache__/
+

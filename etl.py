@@ -45,26 +45,9 @@ def fill_survey(dataframe):
 
     survey['name'] = data['LAST_MD_SEEN'].astype(str) 
 
-    survey['program'] = data['program_type'].map({
-        "University of Maryland Prince George's Hospial Center;Family Medicine":9,
-        "MedStar Washington Hospital Center;Family Medicine":6,
-        "MedStar Washington Hospital Center;Emergency Medicine":4,
-        "Howard University Hospital;Family Medicine":8,
-        "George Washington University Hospital;Emergency Medicine":3,
-        "Walter Reed;Pediatrics":1,
-        "Children's National;Pediatrics":2,
-        "The Wright Center;Family Medicine":7
-    }) 
 
-    survey['pgy'] = data['Training Year'].map({'1':1,'2':2,'3':3,'4':4}) 
 
-    survey['date'] = parse(str(today - timedelta(days=1))).strftime("%Y-%m-%d")
 
-    #survey['supervisor'] = data['last_name_supervisor'].map({})
-
-    data['Prov1email']='jchamber@cnmc.org' # will need to delete this later
-
-    survey['supervisor_email'] = data['Prov1email']
 
     # survey['supervisor'] = data['FIRST_MD_SEEN'].astype(str) --this will need to be mapped because it's a dropdown list
 
@@ -103,7 +86,7 @@ def fill_survey(dataframe):
     for record in json_objects:
         redcap_database.write_record(record)
         time.sleep(5)
-        link = redcap_database.get_survey_link(record_were_on,"trainee_evaluation")
+        link = redcap_database.get_survey_link(record_were_on,"main_form")
         time.sleep(2)
         links.append(link)
         record_were_on+=1
@@ -114,16 +97,16 @@ def fill_survey(dataframe):
     #doctor = data['last_name_supervisor']
 
     #process email assignments
-    base_string = f"""<p>Dear Doctor --</p>
-        <p><br></p>Please complete an evaluation for a resident you worked with yesterday. Several of the fields are already completed.
+    base_string = f"""<p>Dear Provider --</p>
+        <p><br></p>Please review the chart of a patient who returned within 7 days for admission. Several of the fields are completed
+        and the survey includes notes from the first and second visits.
         <p>.</span></p>
         """
 
     reviewers = survey['supervisor_email'].tolist() # don't want unique here because a supervisor might have more than one resident
     links = survey['survey_links'].to_list()
     resident_names = survey['name'].to_list()
-    programs = survey['program'].to_list()
-    pgy_years = survey['pgy'].to_list()
+
     
     #instantiate outlook
     outlook = win32.Dispatch('outlook.application')
@@ -132,8 +115,6 @@ def fill_survey(dataframe):
         mail = outlook.CreateItem(0)
         mail.To = reviewer
         resident = survey.loc[survey['supervisor_email']==reviewer,'name']
-        program = survey.loc[survey['supervisor_email']==reviewer,'program']
-        pgy = survey.loc[survey['supervisor_email']==reviewer,'pgy']
         #enter email addresses to be CC'd below
         #mail.CC = "dberkowitz@childrensnational.org;jchamber@cnmc.org;nmccollum@childrensnational.org"
         mail.Subject = f"Please complete a resident evaluation"
@@ -150,7 +131,7 @@ def fill_survey(dataframe):
 
 
 
-def fill_survey_supervisor(dataframe):
+def fill_survey_last_md(dataframe):
     from redcap_api import Project
     import json
     import pandas as pd
@@ -165,13 +146,13 @@ def fill_survey_supervisor(dataframe):
     from dateutil.parser import parse
     today = date.today()
         
-    with open('survey_dict_supervisor.json', 'r') as file:
+    with open('survey.json', 'r') as file:
         blank_survey = json.load(file)
 
     data = dataframe
     blank_survey_df = pd.DataFrame(columns = blank_survey.keys()) #converts blank template survey into pandas datatype
 
-    with open ('config_supervisor.json','r') as config_file:
+    with open ('config.json','r') as config_file:
         config = json.load(config_file)
     redcap_database = Project(config['api_url'],config['api_key']) #you need to add API key and API URLs here, or use config
     first_record_id = int(redcap_database.next_record()) #gets the next record in the project to add data to, or use config
@@ -284,13 +265,13 @@ def fill_survey_fellow(dataframe):
     from dateutil.parser import parse
     today = date.today()
         
-    with open('survey_dict_fellow.json', 'r') as file:
+    with open('survey.json', 'r') as file:
         blank_survey = json.load(file)
 
     data = dataframe
     blank_survey_df = pd.DataFrame(columns = blank_survey.keys()) #converts blank template survey into pandas datatype
 
-    with open ('config_fellow.json','r') as config_file:
+    with open ('config.json','r') as config_file:
         config = json.load(config_file)
     redcap_database = Project(config['api_url'],config['api_key']) #you need to add API key and API URLs here, or use config
     first_record_id = int(redcap_database.next_record()) #gets the next record in the project to add data to, or use config
@@ -376,13 +357,13 @@ def fill_survey_app(dataframe):
     from dateutil.parser import parse
     today = date.today()
         
-    with open('survey_dict_app.json', 'r') as file:
+    with open('survey.json', 'r') as file:
         blank_survey = json.load(file)
 
     data = dataframe
     blank_survey_df = pd.DataFrame(columns = blank_survey.keys()) #converts blank template survey into pandas datatype
 
-    with open ('config_app.json','r') as config_file:
+    with open ('config.json','r') as config_file:
         config = json.load(config_file)
     redcap_database = Project(config['api_url'],config['api_key']) #you need to add API key and API URLs here, or use config
     first_record_id = int(redcap_database.next_record()) #gets the next record in the project to add data to, or use config
