@@ -42,9 +42,24 @@ def fill_survey(dataframe):
     #prep for transformations by fitting raw data into redcap survey slots
 
     survey['record_id'] = '' 
-
+    # following line needs to change to account for other ptroviders
     survey['name'] = data['LAST_MD_SEEN'].astype(str) 
-
+    survey["provider_id"] = data ["provider_id"]
+    survey["index_providers"] = data ["index_providers"]
+    survey["index_fin"] = data ["index_fin"]
+    survey["index_date"] = data ["index_date"]
+    survey["index_rfv"] = data ["index_rfv"]
+    survey["index_diagnoses"] = data ["index_diagnoses"]
+    survey["return_date"] = data ["return_date"]
+    survey["return_rfv"] = data ["return_rfv"]
+    survey["return_fin"] = data ["return_fin"]
+    survey["return_diagnoses"] = data ["return_diagnoses"]
+    survey["first_note"] = data ["first_note"]
+    survey["last_note"] = data ["last_note"]
+    survey["return_note"] = data ["return_note"]
+    survey["return_reasons"] = ""
+    survey["other_specify"] = ""
+    survey["main_form_complete"] = ""
 
 
 
@@ -103,6 +118,8 @@ def fill_survey(dataframe):
         <p>.</span></p>
         """
 
+# here I need to figure out how to parse the difference combinations of possible emails
+
     reviewers = survey['supervisor_email'].tolist() # don't want unique here because a supervisor might have more than one resident
     links = survey['survey_links'].to_list()
     resident_names = survey['name'].to_list()
@@ -114,12 +131,12 @@ def fill_survey(dataframe):
     for reviewer in reviewers:
         mail = outlook.CreateItem(0)
         mail.To = reviewer
-        resident = survey.loc[survey['supervisor_email']==reviewer,'name']
+        #resident = survey.loc[survey['supervisor_email']==reviewer,'name']
         #enter email addresses to be CC'd below
         #mail.CC = "dberkowitz@childrensnational.org;jchamber@cnmc.org;nmccollum@childrensnational.org"
-        mail.Subject = f"Please complete a resident evaluation"
+        mail.Subject = f"Please review a return visit"
         reviewer_links = survey.loc[survey['supervisor_email']==reviewer,'survey_links']##.to_list()
-        body_string = f"{base_string} The resident's name is {resident}, a PGY {pgy}" # at {program}." this last part doesn't work because programs have been mapped to numbers
+        body_string = f"{base_string}" # at {program}." this last part doesn't work because programs have been mapped to numbers
         for link in reviewer_links:
             body_string+=f"""\n<p> <a href='{link}'>{link}</a></p>"""
         #for i,link in zip(range(len(reviewer_links)),reviewer_links):
@@ -164,37 +181,11 @@ def fill_survey_last_md(dataframe):
 
     survey['record_id'] = '' 
 
-    #survey['faculty_name'] = data['FIRST_MD_SEEN'].astype(str) 
+    
 
-    survey['trainee_email'] = data['Prov2email']
+  
 
-    survey['trainee_email'] = 'jchamber@cnmc.org'  #placeholder for testing
 
-    survey['date'] = parse(str(today - timedelta(days=1))).strftime("%Y-%m-%d")
-
-    #survey['supervisor'] = data[''first_name_supervisor'] + ' ' + data['last_name_supervisor]
-
-    #survey['supervisor_email'] = data['Prov1email']
-
-    # survey['supervisor'] = data['FIRST_MD_SEEN'].astype(str) --this will need to be mapped because it's a dropdown list
-
-            #do race
-    """
-            conditions = [
-            survey_duped['patient_race'].str.contains("Black", na=False),
-            survey_duped['patient_race'].str.contains("Caucasian", na=False),
-            survey_duped['patient_race'].str.contains("Asian", na=False),
-            survey_duped['patient_race'].str.contains("Multiple", na=False),
-            survey_duped['patient_race'].str.contains("Unknown", na=False),
-            survey_duped['patient_race'].str.contains("Indian", na=False),
-            survey_duped['patient_race'].str.contains("Hawaiian", na=False),
-            survey_duped['patient_race'].str.contains("Other", na=False)
-            ]
-
-            choices = [1, 2, 3, 8, 6, 4, 5, 7]  # The numeric codes for race
-
-            survey_duped['patient_race'] = np.select(conditions, choices, default=7).astype(str)
-    """
     #do disposition
 
 
