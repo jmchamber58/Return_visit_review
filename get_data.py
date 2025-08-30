@@ -123,13 +123,13 @@ def query_data():
         when  role_first_md = 'Physician Assistant' or role_first_resident = 'Nurse Practitioner' then 1
         when  role_last_md = 'Physician Assistant' or role_first_resident = 'Nurse Practitioner' then 1
         ELSE 0
-        END 'APP '
+        END 'APP'
     , case 
         when role_first_resident = 'Fellow' then 1
         when  role_first_md = 'Fellow' then 1
         when  role_last_md = 'Fellow' then 1
         ELSE 0
-        END 'Fellow '
+        END 'Fellow'
 
     from patients
     left outer join first_note on patients.index_fin = first_note.pt_fin
@@ -138,23 +138,23 @@ def query_data():
 
     """
     return_visits = pd.read_sql(sql, conn)
-    return_visits.drop_duplicates(subset='PATIENT_FIN', keep='first', inplace=True)
-
-    return return_visits 
-
-
-"""
-
-
-
-
+    return_visits.drop_duplicates(subset='index_fin', keep='first', inplace=True)
+    apps = return_visits[return_visits['APP']==1]
+    returns_with_admission = return_visits[return_visits['admit_visit2']==1]
+    fellows = returns_with_admission[returns_with_admission['Fellow']==1]
+    
     # close all SQL connections
     for i in range(1, 200):
         conn = engine.connect()
         # some simple data operations
         conn.close()
-        engine.dispose()
+        engine.dispose()       
+    
+    return return_visits, apps, returns_with_admission, fellows 
 
+  
+
+"""
     #create first and last names for trainees
     df[['last_name', 'first_name_suffix']] = df['FIRST_RESIDENT_SEEN'].str.split(',', n=1, expand=True)
     # Further split first_name_suffix to separate first name and remove suffix

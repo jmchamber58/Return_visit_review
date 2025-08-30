@@ -1,21 +1,22 @@
+#%%
 from get_data import query_data
-df = query_data()
+return_visits, apps, returns_with_admission, fellows = query_data()
+
+#%%
 # need to write etl for MD and APP
-from etl import fill_survey_md, fill_survey_app
+from etl import fill_survey_last_md, fill_survey_app, fill_survey_fellow
 import pandas as pd
 from redcap_api import Project
 pd.set_option('max_colwidth', 100000)
 #queried_data = query_data()
 
 
-df_list = [df_fellows, df_residents, df_app]
-df_residents.to_excel(f"resident_output_{date_range}.xlsx",verbose=True) #outputs raw query data
-df_app.to_excel(f"app_output_{date_range}.xlsx",verbose=True)
-df_fellows.to_excel(f"fellow_output_{date_range}.xlsx",verbose=True)
+df_list = [apps, returns_with_admission, fellows]
 for item in df_list:
     print(item)
     if len(item)==0:
         continue
+    
     if  'FIRST_RESIDENT_SEEN' in item.columns:
         final_resident_data = fill_survey_resident(item)
         final_supervisor_data = fill_survey_supervisor(item)
