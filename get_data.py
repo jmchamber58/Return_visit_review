@@ -26,7 +26,7 @@ def query_data():
 
     conn, engine = sql_server_alchemy_conn()
     today = date.today()
-    start_date = parse(str(today - timedelta(days=4))).strftime("%m/%d/%Y")
+    start_date = parse(str(today - timedelta(days=6))).strftime("%m/%d/%Y")
     end_date = parse(str(today - timedelta(days=0))).strftime("%m/%d/%Y")
     date_range = parse(start_date).strftime("%m_%d_%Y") + '_to_' + \
             parse(end_date).strftime("%m_%d_%Y")
@@ -35,46 +35,106 @@ def query_data():
     sql = f"""
         declare @start date = '{start_date}'
         --declare @end date = '{end_date}'
+       
+        
+    ; with patients as
+            (
+            SELECT distinct tat.LAST_ASSIGNED_MD, tat.LAST_ASSIGNED_MD_ID
+            , tat.FIRST_MD_SEEN, tat.FIRST_MD_SEEN_ID
+            , tat.FIRST_RESIDENT_SEEN, tat.FIRST_RESIDENT_SEEN_ID
+            , concat(tat.FIRST_RESIDENT_SEEN, ';', tat.FIRST_MD_SEEN,';',tat.LAST_ASSIGNED_MD) index_providers
+            , left(tat.PT_ACUITY,1) as ESI 
+            , tat.PATIENT_FIN index_fin, tat.REASON_FOR_VISIT index_rfv, tat2.REASON_FOR_VISIT retunr_rfv
+            , tat2.PATIENT_FIN return_fin
+            , DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME]) AS Bounceback_Hours
+            , concat (tat.PT_DX1, ';', tat.pt_DX2, ';' , tat.pt_DX3) as index_diagnoses
+            , concat (tat2.PT_DX1, ';', tat2.pt_DX2, ';' , tat2.pt_DX3)as return_diagnoses
+            , case when tat2.PT_DISCH_DISPO like 'admit%' then 1
+                when tat2.PT_DISCH_DISPO like '%IP' then 1
+                else 0
+                end admit_visit2
+            , prov.ProviderRole as role_last_md
+            , prov2.ProviderRole as role_first_md
+            , prov3.ProviderRole as role_first_resident
+            , '' return_reasons
+            , '' other_specify
+            , prov.email as last_assigned_MD_email
+            , prov2.email as first_assigned_MD_email
+            , prov3.email as first_resident_email
+        
+            FROM ED_TAT_MASTER tat 
+            INNER JOIN ed_tat_master AS tat2 ON tat.PATIENT_MRN = tat2.PATIENT_MRN
+            left outer join Providers_All_Years prov on tat.LAST_ASSIGNED_MD_ID = prov.Provider_ID
+            left outer join Providers_All_Years prov2 on tat.FIRST_MD_SEEN_ID = prov2.Provider_ID
+            left outer join Providers_All_Years prov3 on tat.FIRST_RESIDENT_SEEN_ID = prov3.Provider_ID
+            WHERE tat.PATIENT_FIN<tat2.[PATIENT_FIN] AND tat2.REASON_FOR_VISIT Not Like 'Wound check' 
+            AND DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME])>8 
+            AND DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME])<168 AND tat2.PT_DX1 Not Like '%removal%' 
+            AND tat2.PT_DX1 Not Like '%wound check%' 
+            AND tat.PT_DISCH_DISPO Not Like '%IP' 
+            AND tat.PT_DISCH_DISPO Not Like '%admitted%' 
+            --AND (tat2.PT_DISCH_DISPO Like '%IP' Or tat2.PT_DISCH_DISPO Like '%admitted%')
+            AND tat.LAST_ASSIGNED_MD is not null
+            AND tat.FIRST_MD_SEEN is not null
+            AND tat2.checkin_date_time >= @start --and tat.checkin_date_time < DATEADD(day,1,@end)
+            --ORDER BY tat.LAST_ASSIGNED_MD, PATIENT_FIN, Bounceback_Hours
+            )
 
-        SELECT distinct tat.LAST_ASSIGNED_MD, tat.LAST_ASSIGNED_MD_ID
-        , tat.FIRST_MD_SEEN, tat.FIRST_MD_SEEN_ID
-		, tat.FIRST_RESIDENT_SEEN, tat.FIRST_RESIDENT_SEEN_ID
-        , concat(tat.FIRST_RESIDENT_SEEN, ';', tat.FIRST_MD_SEEN,';',tat.LAST_ASSIGNED_MD) index_providers
-        , left(tat.PT_ACUITY,1) as ESI 
-        , tat.PATIENT_FIN index_fin, tat.REASON_FOR_VISIT index_rfv, tat2.REASON_FOR_VISIT retunr_rfv
-        , tat2.PATIENT_FIN return_fin
-        , DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME]) AS Bounceback_Hours
-        , concat (tat.PT_DX1, ';', tat.pt_DX2, ';' , tat.pt_DX3) as index_diagnoses
-        , case when tat2.PT_DISCH_DISPO like 'admit%' then 1
-            when tat2.PT_DISCH_DISPO like '%IP' then 1
-            else 0
-            end admit_visit2
-        , prov.ProviderRole as role_last_md
-        , prov2.ProviderRole as role_first_md
-        , prov3.ProviderRole as role_first_resident
-        , '' return_reasons
-		, '' other_specify
-		, prov.email as last_assigned_MD_email
-		, prov2.email as first_assigned_MD_email
-		, prov3.email as first_resident_email
-	
+    , first_note as
+        (
+        select pt_fin, result first_note_result from
+                (select pt_fin, result, result_dt_tm, row_number() over (partition by pt_fin order by result_dt_tm) as RN
+                from ED_NOTES_MASTER
+                where note_type = 'Powernote ED'
+                and pt_fin in 
+                    (select index_fin from patients)
+                ) a
+            where a.rn = 1
+        )
 
-        FROM ED_TAT_MASTER tat 
-        INNER JOIN ed_tat_master AS tat2 ON tat.PATIENT_MRN = tat2.PATIENT_MRN
-        left outer join Providers_All_Years prov on tat.LAST_ASSIGNED_MD = prov.Provider_Name
-		left outer join Providers_All_Years prov2 on tat.FIRST_MD_SEEN = prov2.Provider_Name
-		left outer join Providers_All_Years prov3 on tat.FIRST_RESIDENT_SEEN = prov3.Provider_Name
-        WHERE tat.PATIENT_FIN<tat2.[PATIENT_FIN] AND tat2.REASON_FOR_VISIT Not Like 'Wound check' 
-        AND DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME])>8 
-        AND DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME])<168 AND tat2.PT_DX1 Not Like '%removal%' 
-        AND tat2.PT_DX1 Not Like '%wound check%' 
-        AND tat.PT_DISCH_DISPO Not Like '%IP' 
-        AND tat.PT_DISCH_DISPO Not Like '%admitted%' 
-        --AND (tat2.PT_DISCH_DISPO Like '%IP' Or tat2.PT_DISCH_DISPO Like '%admitted%')
-        AND tat.LAST_ASSIGNED_MD is not null
-        AND tat.FIRST_MD_SEEN is not null
-        AND tat2.checkin_date_time >= @start --and tat.checkin_date_time < DATEADD(day,1,@end)
-        --ORDER BY tat.LAST_ASSIGNED_MD, PATIENT_FIN, Bounceback_Hours
+    , last_note as
+        (
+        select pt_fin, result last_note_result from
+                (select pt_fin, result, row_number() over (partition by pt_fin order by result_dt_tm desc) as RN
+                from ED_NOTES_MASTER
+                where note_type = 'Powernote ED'
+                and pt_fin in 
+                    (select index_fin from patients)
+            ) b
+            where b.rn = 1
+        )
+        
+    , return_note as
+        (
+            select pt_fin, result return_note from
+                (select pt_fin, result, row_number() over (partition by pt_fin order by result_dt_tm desc) as RN
+                from ED_NOTES_MASTER
+                where note_type = 'Powernote ED'
+                and pt_fin in 
+                    (select return_fin from patients)
+            ) c
+            where c.rn = 1
+        )
+
+    select distinct patients.*, first_note.first_note_result, last_note.last_note_result
+    , return_note.return_note
+    , case 
+        when role_first_resident = 'Physician Assistant' or role_first_resident = 'Nurse Practitioner' then 1
+        when  role_first_md = 'Physician Assistant' or role_first_resident = 'Nurse Practitioner' then 1
+        when  role_last_md = 'Physician Assistant' or role_first_resident = 'Nurse Practitioner' then 1
+        ELSE 0
+        END 'APP '
+    , case 
+        when role_first_resident = 'Fellow' then 1
+        when  role_first_md = 'Fellow' then 1
+        when  role_last_md = 'Fellow' then 1
+        ELSE 0
+        END 'Fellow '
+
+    from patients
+    left outer join first_note on patients.index_fin = first_note.pt_fin
+    left outer join last_note on patients.index_fin = last_note.pt_fin
+    left outer join return_note on patients.index_fin = return_note.pt_fin
 
     """
     return_visits = pd.read_sql(sql, conn)
