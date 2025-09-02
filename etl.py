@@ -43,10 +43,12 @@ def fill_survey(dataframe):
 
     survey['record_id'] = '' 
     # following line needs to change to account for other ptroviders
-    survey['name'] = data['LAST_MD_SEEN'].astype(str) 
+    survey['name'] = data['provider'].astype(str) 
     survey["provider_id"] = data ["provider_id"]
     survey["index_providers"] = data ["index_providers"]
     survey["index_fin"] = data ["index_fin"]
+    survey["pt_name"] = data ["pt_name"]
+    survey["pt_age"] = data ["pt_age"]
     survey["index_date"] = data ["index_date"]
     survey["index_rfv"] = data ["index_rfv"]
     survey["index_diagnoses"] = data ["index_diagnoses"]
@@ -54,6 +56,7 @@ def fill_survey(dataframe):
     survey["return_rfv"] = data ["return_rfv"]
     survey["return_fin"] = data ["return_fin"]
     survey["return_diagnoses"] = data ["return_diagnoses"]
+    survey["admit_return_visit"] = data["admit_visit2"]
     survey["first_note"] = data ["first_note"]
     survey["last_note"] = data ["last_note"]
     survey["return_note"] = data ["return_note"]
@@ -113,17 +116,17 @@ def fill_survey(dataframe):
 
     #process email assignments
     base_string = f"""<p>Dear Provider --</p>
-        <p><br></p>Please review the chart of a patient who returned within 7 days for admission. Several of the fields are completed
+        <p><br></p>Please review the chart of a patient who returned within 7 days. 
+        Several of the fields are completed
         and the survey includes notes from the first and second visits.
         <p>.</span></p>
         """
 
 # here I need to figure out how to parse the difference combinations of possible emails
 
-    reviewers = survey['supervisor_email'].tolist() # don't want unique here because a supervisor might have more than one resident
+    reviewers = survey['provider_email'].tolist() # don't want unique here because a supervisor might have more than one resident
     links = survey['survey_links'].to_list()
-    resident_names = survey['name'].to_list()
-
+    
     
     #instantiate outlook
     outlook = win32.Dispatch('outlook.application')

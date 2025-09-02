@@ -44,7 +44,8 @@ def query_data():
             , tat.FIRST_RESIDENT_SEEN, tat.FIRST_RESIDENT_SEEN_ID
             , concat(tat.FIRST_RESIDENT_SEEN, ';', tat.FIRST_MD_SEEN,';',tat.LAST_ASSIGNED_MD) index_providers
             , left(tat.PT_ACUITY,1) as ESI 
-            , tat.PATIENT_FIN index_fin, tat.REASON_FOR_VISIT index_rfv, tat2.REASON_FOR_VISIT retunr_rfv
+            , tat.PATIENT_FIN index_fin, tat.PATIENT_NAME_FULL_FORMATTED pt_name, tat.PT_AGE pt_age
+            , tat.REASON_FOR_VISIT index_rfv, tat2.REASON_FOR_VISIT return_rfv
             , tat2.PATIENT_FIN return_fin
             , DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME]) AS Bounceback_Hours
             , concat (tat.PT_DX1, ';', tat.pt_DX2, ';' , tat.pt_DX3) as index_diagnoses
@@ -139,90 +140,41 @@ def query_data():
     """
     return_visits = pd.read_sql(sql, conn)
     return_visits.drop_duplicates(subset='index_fin', keep='first', inplace=True)
-    apps = return_visits[return_visits['APP']==1]
+    return_visits.columns = return_visits.columns.str.lower
+    return_visits['provider'] = ''
+    return_visits['provider_email'] = ''
+    return_visits['provider_id'] = ''
+    apps_fellows = return_visits[return_visits['app']==1 | (return_visits['Fellow'] == 1)]
+    # set provider = first resident is APP is in the first resident column
+    condition_first_res = apps_fellows['role_first_resident'].isin(['Physician Assistant', 'Nurse Practitioner', 'Fellow'])
+    apps_fellows.loc[condition_first_res,['provider','provider_email', 'provider_id']
+                     ] = apps_fellows.loc[condition_first_res
+                                    ,['first_resident_seen','first_resident_email'
+                                      ,'first_resident_seen_id']]
+    # set provider = first MD if APP is in the first MD column
+    condition_first_md = apps_fellows['role_first_md'].isin(['Physician Assistant', 'Nurse Practitioner'
+                                                             , 'Fellow'])
+    apps_fellows.loc[condition_first_md, ['provider','provider_email', 'provider_id']
+                     ] = apps_fellows.loc[condition_first_md, ['first_md_seen', 'first_md_email'
+                                                ,'first_md_seen_id']]
+   
+     # set provider = last MD if APP is in the last MD column
+    condition_last_md = apps_fellows['role_last_md'].isin(['Physician Assistant', 'Nurse Practitioner', 'Fellow'])
+    apps_fellows.loc[condition_last_md, ['provider','provider_email', 'provider_id']
+                     ] = apps_fellows.loc[condition_last_md, ['last_assigned_md', 'last_assigned_md_email'
+                                                ,'last_assigned_md_id']]
+    # need to link to email addresses
+
     returns_with_admission = return_visits[return_visits['admit_visit2']==1]
-    fellows = returns_with_admission[returns_with_admission['Fellow']==1]
-    
+    returns_with_admission['provider']=returns_with_admission['last_md_seen']
+        
     # close all SQL connections
+
     for i in range(1, 200):
         conn = engine.connect()
         # some simple data operations
         conn.close()
         engine.dispose()       
     
-    return return_visits, apps, returns_with_admission, fellows 
+    return return_visits, apps_fellows, returns_with_admission 
 
-  
-
-"""
-    #create first and last names for trainees
-    df[['last_name', 'first_name_suffix']] = df['FIRST_RESIDENT_SEEN'].str.split(',', n=1, expand=True)
-    # Further split first_name_suffix to separate first name and remove suffix
-    df[['first_name', 'suffix']] = df['first_name_suffix'].str.strip().str.split(' ', n=1, expand=True)
-    # Drop the intermediate column and the suffix column if not needed
-    df = df.drop(columns=['first_name_suffix', 'suffix'])
-
-    # create first and last names for supervisors
-    df[['last_name_supervisor', 'first_name_suffix_supervisor']] = df['FIRST_MD_SEEN'].str.split(',', n=1, expand=True)
-    # Further split first_name_suffix to separate first name and remove suffix
-    df[['first_name_supervisor', 'suffix_supervisor']] = df['first_name_suffix_supervisor'].str.strip().str.split(' ', n=1, expand=True)
-    # Drop the intermediate column and the suffix column if not needed
-    df = df.drop(columns=['first_name_suffix_supervisor', 'suffix_supervisor'])
-
-    file_loc = pathlib.Path(os.environ['ONEDRIVE'],r"temp1/Evaluations")
-    file_name = f"{file_loc}/ED Evaluation Database.xlsx"
-    residents = pd.read_excel(file_name,sheet_name='Resident Information')
-
-    # Convert to lowercase
-    df['first_name_lower'] = df['first_name'].str.lower()
-    df['last_name_lower'] = df['last_name'].str.lower()
-    residents['first_name_lower'] = residents['First Name'].str.lower()
-    residents['last_name_lower'] = residents['Last Name'].str.lower()
-
-    # Merge
-    df_merged = df.merge(
-        residents[['first_name_lower', 'last_name_lower', 'email',
-                'Program','Training Year','Residency Type']],
-        on=['first_name_lower', 'last_name_lower'],
-        how='left'
-    )
-
-    # Update email field
-    col_list = ['Program','Training Year','Residency Type']
-    for col in col_list:
-        df[col] = df_merged[col]
-    df['Prov2email'] = df_merged['email']
-    df['Training Year'] = pd.to_numeric(df['Training Year'], errors='coerce').astype('Int64')
-    df['Training Year'] =  df['Training Year'].astype(str)
-    df['program_type'] = df['Program'].fillna('') + ';' + df['Residency Type'].fillna('')
-
-    # Clean up
-    df.drop(columns=['first_name_lower', 'last_name_lower'], inplace=True)
-    #residents.drop(columns=['first_name_lower', 'last_name_lower'], inplace=True)
-
-    # Group by the two columns and count the occurrences
-    # this is for residents and APP
-    df_counts = df.groupby(['FIRST_MD_SEEN','Prov1Role','Prov1email',
-                            'first_name_supervisor','last_name_supervisor',
-                            'FIRST_RESIDENT_SEEN','first_name','last_name',
-                            'Program','Training Year','Residency Type',
-                            'Prov2Role', 'Prov2email','program_type','Prov3Role','Prov3email']).size().reset_index(name=
-                            'count')
-    df_counts = df_counts[df_counts['count'] >= 2]
-    df_residents = df_counts[df_counts['Prov2Role']=='Resident']
-    df_residents = df_residents[['FIRST_MD_SEEN', 'Prov1Role', 'Prov1email', 'first_name_supervisor',
-        'last_name_supervisor', 'FIRST_RESIDENT_SEEN', 'first_name',
-        'last_name', 'Program', 'Training Year', 'Residency Type', 'Prov2Role',
-        'Prov2email', 'program_type', 'count']]
-    df_fellows = df_counts[(df_counts['Prov1Role']=='Fellow') & (df_counts['Prov3Role'] == 'Attending')]
-    df_fellows = df_fellows[['FIRST_MD_SEEN', 'Prov1Role', 'Prov1email', 'first_name_supervisor',
-        'last_name_supervisor', 'Prov3email', 'count']]  
-    df_fellows = df_fellows.rename(columns={'first_name_supervisor':'fellow_first_name','last_name_supervisor':'fellow_last_name'})                 
-    df_app =  df_counts[(df_counts['Prov2Role']=='Physician Assistant') | (df_counts['Prov2Role']=='Nurse Practitioner')]
-    df_app = df_app[['FIRST_MD_SEEN', 'Prov1Role', 'Prov1email', 'first_name_supervisor',
-        'last_name_supervisor', 'FIRST_RESIDENT_SEEN', 'first_name',
-        'last_name',  'Prov2Role', 'Prov2email', 'count']]
-    df_app = df_app.rename(columns = {'FIRST_RESIDENT_SEEN':'FIRST_APP'})
-    return df_fellows, df_residents, df_app, date_range
-
-    """
