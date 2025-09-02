@@ -44,7 +44,10 @@ def query_data():
                 , tat.FIRST_RESIDENT_SEEN, tat.FIRST_RESIDENT_SEEN_ID
                 , concat(tat.FIRST_RESIDENT_SEEN, ';', tat.FIRST_MD_SEEN,';',tat.LAST_ASSIGNED_MD) index_providers
                 , left(tat.PT_ACUITY,1) as ESI 
-                , tat.PATIENT_FIN index_fin, tat.PATIENT_NAME_FULL_FORMATTED pt_name, tat.PT_AGE pt_age
+                , tat.PATIENT_FIN index_fin
+                , format(tat.checkin_date_time, 'yyyy-MM-dd') as index_date
+		        , format(tat2.checkin_date_time, 'yyyy-MM-dd') as return_date
+                , tat.PATIENT_NAME_FULL_FORMATTED pt_name, tat.PT_AGE pt_age
                 , tat.REASON_FOR_VISIT index_rfv, tat2.REASON_FOR_VISIT return_rfv
                 , tat2.PATIENT_FIN return_fin
                 , DateDiff(hour,tat.[DISPO_DATE_TIME],tat2.[CHECKIN_DATE_TIME]) AS Bounceback_Hours
@@ -107,7 +110,7 @@ def query_data():
             
         , return_note as
             (
-                select pt_fin, result return_note from
+                select pt_fin, result return_note_result from
                     (select pt_fin, result, row_number() over (partition by pt_fin order by result_dt_tm desc) as RN
                     from ED_NOTES_MASTER
                     where note_type = 'Powernote ED'
@@ -118,7 +121,7 @@ def query_data():
             )
 
         select distinct patients.*, first_note.first_note_result, last_note.last_note_result
-        , return_note.return_note
+        , return_note.return_note_result
         , case 
             when role_first_resident = 'Physician Assistant' or role_first_resident = 'Nurse Practitioner' then 1
             when  role_first_md = 'Physician Assistant' or role_first_resident = 'Nurse Practitioner' then 1
@@ -144,6 +147,8 @@ def query_data():
     return_visits['provider'] = ''
     return_visits['provider_email'] = ''
     return_visits['provider_id'] = ''
+    return_visits["return_reasons"] = ''
+    return_visits["other_specify"] = ''
     apps_fellows = return_visits[return_visits['app']==1 | (return_visits['fellow'] == 1)]
     # set provider = first resident is APP is in the first resident column
     
@@ -184,6 +189,12 @@ def query_data():
     returns_with_admission = returns_with_admission[~returns_with_admission['role_last_md'].isin(['Physician Assistant', 'Nurse Practitioner', 'Fellow'])]
     # close all SQL connections
 
+    #for testing purposes:
+
+    returns_with_admission['provider_email'] = 'jchamber@cnmc.org'
+    apps_fellows['provider_email'] = 'jchamber@cnmc.org'
+    
+    
     for i in range(1, 200):
         conn = engine.connect()
         # some simple data operations

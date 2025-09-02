@@ -6,6 +6,8 @@ Created on Thu Jul  2 15:50:29 2020
 Pulls data on patients who return within one week and are admitted. Scheduled to run onthe 6th of each month.
 Emails to Jim, who then distributes to providers who have return visits.
 12/8/2023 added PA component for PAs seeing ESI3 patients independently
+
+This was a starting point but now useing get_data.py
 """
 
 # import pyodbc

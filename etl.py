@@ -8,7 +8,6 @@ def fill_survey(dataframe):
     Returns:
         survey
 
-
     """
     
     from redcap_api import Project
@@ -45,6 +44,7 @@ def fill_survey(dataframe):
     # following line needs to change to account for other ptroviders
     survey['name'] = data['provider'].astype(str) 
     survey["provider_id"] = data ["provider_id"]
+    survey['provider_email'] = data['provider_email']
     survey["index_providers"] = data ["index_providers"]
     survey["index_fin"] = data ["index_fin"]
     survey["pt_name"] = data ["pt_name"]
@@ -57,11 +57,19 @@ def fill_survey(dataframe):
     survey["return_fin"] = data ["return_fin"]
     survey["return_diagnoses"] = data ["return_diagnoses"]
     survey["admit_return_visit"] = data["admit_visit2"]
-    survey["first_note"] = data ["first_note"]
-    survey["last_note"] = data ["last_note"]
-    survey["return_note"] = data ["return_note"]
-    survey["return_reasons"] = ""
-    survey["other_specify"] = ""
+    survey["first_note"] = data ["first_note_result"]
+    survey["last_note"] = data ["last_note_result"]
+    survey["return_note"] = data ["return_note_result"]
+    survey['return_reasons___1'] = '' #reviewer multiple pick list
+    survey['return_reasons___2'] = ''
+    survey['return_reasons___3'] = ''
+    survey['return_reasons___4'] = ''
+    survey['return_reasons___5'] = ''
+    survey['return_reasons___6'] = ''
+    survey['return_reasons___7'] = ''
+    survey['return_reasons___8'] = ''
+    #survey["return_reasons"] = data["return_visits"]
+    #survey["other_specify"] = data["other_specify"]
     survey["main_form_complete"] = ""
 
 
@@ -138,7 +146,7 @@ def fill_survey(dataframe):
         #enter email addresses to be CC'd below
         #mail.CC = "dberkowitz@childrensnational.org;jchamber@cnmc.org;nmccollum@childrensnational.org"
         mail.Subject = f"Please review a return visit"
-        reviewer_links = survey.loc[survey['supervisor_email']==reviewer,'survey_links']##.to_list()
+        reviewer_links = survey.loc[survey['provider_email']==reviewer,'survey_links']##.to_list()
         body_string = f"{base_string}" # at {program}." this last part doesn't work because programs have been mapped to numbers
         for link in reviewer_links:
             body_string+=f"""\n<p> <a href='{link}'>{link}</a></p>"""
@@ -149,6 +157,12 @@ def fill_survey(dataframe):
   
     return survey
 
+
+
+
+
+
+#the following stuff is not needed
 
 
 def fill_survey_last_md(dataframe):
@@ -184,9 +198,7 @@ def fill_survey_last_md(dataframe):
 
     survey['record_id'] = '' 
 
-    
-
-  
+     
 
 
     #do disposition
