@@ -24,13 +24,13 @@ def fill_survey(dataframe):
     from dateutil.parser import parse
     today = date.today()
        
-    with open('survey_dict.json', 'r') as file:
+    with open('return_visits_dict.json', 'r') as file:
         blank_survey = json.load(file)
 
     data = dataframe
     blank_survey_df = pd.DataFrame(columns = blank_survey.keys()) #converts blank template survey into pandas datatype
 
-    with open ('config.json','r') as config_file:
+    with open ('return_visits_config.json','r') as config_file:
         config = json.load(config_file)
     redcap_database = Project(config['api_url'],config['api_key']) #you need to add API key and API URLs here, or use config
     first_record_id = int(redcap_database.next_record()) #gets the next record in the project to add data to, or use config
