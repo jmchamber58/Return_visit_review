@@ -12,7 +12,7 @@ pd.set_option('max_colwidth', 100000)
 
 df_list = [apps_fellows, returns_with_admission]
 for item in df_list:
-    print(item)
+    #print(item)
     if len(item)==0:
         continue
     fill_survey(item)

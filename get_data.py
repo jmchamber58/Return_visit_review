@@ -26,8 +26,8 @@ def query_data():
 
     conn, engine = sql_server_alchemy_conn()
     today = date.today()
-    start_date = parse(str(today - timedelta(days=12))).strftime("%m/%d/%Y")
-    end_date = parse(str(today - timedelta(days=7))).strftime("%m/%d/%Y")
+    start_date = parse(str(today - timedelta(days=6))).strftime("%m/%d/%Y")
+    end_date = parse(str(today - timedelta(days=5))).strftime("%m/%d/%Y")
     date_range = parse(start_date).strftime("%m_%d_%Y") + '_to_' + \
             parse(end_date).strftime("%m_%d_%Y")
 
@@ -144,11 +144,11 @@ def query_data():
     return_visits = pd.read_sql(sql, conn)
     return_visits.drop_duplicates(subset='index_fin', keep='first', inplace=True)
     return_visits.columns = return_visits.columns.str.lower()
-    return_visits['provider'] = ''
-    return_visits['provider_email'] = ''
-    return_visits['provider_id'] = ''
-    return_visits["return_reasons"] = ''
-    return_visits["other_specify"] = ''
+    return_visits["provider"] = ""
+    return_visits["provider_email"] = ""
+    return_visits["provider_id"] = ""
+    return_visits["return_reasons"] = ""
+    return_visits["other_specify"] = ""
     apps_fellows = return_visits[return_visits['app']==1 | (return_visits['fellow'] == 1)]
     # set provider = first resident is APP is in the first resident column
     
@@ -191,8 +191,8 @@ def query_data():
 
     #for testing purposes:
 
-    returns_with_admission['provider_email'] = 'jchamber@cnmc.org'
-    apps_fellows['provider_email'] = 'jchamber@cnmc.org'
+    #returns_with_admission['provider_email'] = 'jchamber@cnmc.org'
+    #apps_fellows['provider_email'] = 'jchamber@cnmc.org'
     
     
     for i in range(1, 200):
